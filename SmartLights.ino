@@ -1,11 +1,12 @@
-//#include <ArduinoJson.h>
-
-#include <ArduinoOTA.h>
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#include <WiFiUdp.h>
+#include <functional>
+#include "Switch.h"
+#include "UpnpBroadcastResponder.h"
+#include "CallbackFunction.h"
 #include <Adafruit_NeoPixel.h>
-#include <ESP8266mDNS.h>
 
 
 //LED Stuff
@@ -24,10 +25,10 @@ boolean connectWifi();
 bool wifiConnected = false;
 
 //on/off callbacks
-//void lightOn();
-//void lightOff();
-void jsonCase();
-void sendBodyResponse(bool success);
+void lightOn();
+void lightOff();
+void secondOn();
+void secondOff();
 
 //------- Replace the following! ------
 //char ssid[] = "UofM-Guest";       // your network SSID (name)
@@ -36,25 +37,22 @@ void sendBodyResponse(bool success);
 //const char* password = "brady151";
 const String ssid = "StoffelNetwork-5";
 const String password = "9529471171";
-const char* host = "connorlights";
 
-//UpnpBroadcastResponder wemoManager;
-String ipAddr = "";
+UpnpBroadcastResponder wemoManager;
+Switch *rainbowEffect = NULL;
+Switch *coolEffect = NULL;
+Switch *warmEffect = NULL;
+Switch *natureEffect = NULL;
+Switch *candyEffect = NULL;
+Switch *christmasEffect = NULL;
 
-
-
-String effectData[][28] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28"},
-                    {"Off", "Strobe", "Cylon Bounce", "Fire", "Color Wipe", "Fade in and Out", "Halloween Eyes", "KITT", "Rainbow Cylce", 
-                    "Cool Cycle", "Warm Cycle", "Nature Cycle", "Candy Cycle", "Christmas Cycle", "Twinkle", "Random Twinkle", 
-                    "Running Lights", "Snow Sparkle", "Bouncing Balls", "Bouncing Colored Balls", "Sparkle", "Theater Chase", 
-                    "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim" }};
-
-
-int effectDataLength = 28;
-ESP8266WebServer server(80);
+Switch *lightingEffect = NULL;
+Switch *MedHighLightingEffect = NULL;
+Switch *MedLightingEffect = NULL;
+Switch *MedLowLightingEffect = NULL;
 
 
-const int ledPin = 2;
+const int ledPin = LED_BUILTIN;
 
 void setup()
 {
@@ -68,16 +66,14 @@ void setup()
 
 
 
-  // Uncomment this is WEMO ever works for Alexa again
-  // Doesn't work as of now which is disappointing
-  setupWemoStuff();
+// Uncomment this is WEMO ever works for Alexa again
+// Doesn't work as of now which is disappointing
+//  setupWemoStuff();
 
 
 
 
   setupLights();
-
-  ipAddr = WiFi.localIP().toString();
 
   //  pinMode(ledPin, OUTPUT); // initialize digital ledPin as an output.
   //  delay(10);
@@ -85,8 +81,7 @@ void setup()
 }
 
 void setupWemoStuff() {
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, HIGH);
+
   // Set WiFi to station mode and disconnect from an AP if it was Previously
   // connected
   WiFi.mode(WIFI_STA);
@@ -105,65 +100,38 @@ void setupWemoStuff() {
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   IPAddress ip = WiFi.localIP();
-//  ipAddr += ip.toString();
   Serial.println(ip);
   wifiConnected = true;
+  
+  wemoManager.beginUdpMulticast();
 
-  server.on("/case", jsonCase); //Associate the handler function to the path
-  server.on("/base", baseCase); //Associate the handler function to the path
+  // Format: Alexa invocation name, local port no, on callback, off callback
+  rainbowEffect = new Switch("rainbow effect", 80, rainbowLightsOn, lightsOff);
+  coolEffect = new Switch("cool effect", 81, coolLightsOn, lightsOff);
+  warmEffect = new Switch("warm effect", 82, warmLightsOn, lightsOff);
+  natureEffect = new Switch("nature effect", 83, natureLightsOn, lightsOff);
+  candyEffect = new Switch("candy effect", 84, candyLightsOn, lightsOff);
+  christmasEffect = new Switch("christmas effect", 85, christmasLightsOn, lightsOff);
 
+  lightingEffect = new Switch("white lighting", 84, lightsOn, lightsOff);
 
-  // Set up mDNS responder:
-  // - first argument is the domain name, in this example
-  //   the fully-qualified domain name is "esp8266.local"
-  // - second argument is the IP address to advertise
-  //   we send our IP address on the WiFi network
-  if (!MDNS.begin(host)) {
-    Serial.println("Error setting up MDNS responder!");
-    while (1) {
-      delay(1000);
-    }
-  }
-  Serial.println("mDNS responder started");
+  MedHighLightingEffect = new Switch("Medium High lighting", 87, mediumHighLightsOn, lightsOff);
+  MedLightingEffect = new Switch("Medium lighting", 88, mediumLightsOn, lightsOff);
+  MedLowLightingEffect = new Switch("Medium Low lighting", 89, mediumLowLightsOn, lightsOff);
 
-  server.begin(); //Start the server
-  Serial.println("Server listening");
-  MDNS.addService("http", "tcp", 80);
+  wemoManager.addDevice(*rainbowEffect);
+  wemoManager.addDevice(*lightingEffect);
 
+  wemoManager.addDevice(*coolEffect);
+  wemoManager.addDevice(*warmEffect);
+  wemoManager.addDevice(*natureEffect);
+  wemoManager.addDevice(*candyEffect);
+  wemoManager.addDevice(*christmasEffect);
 
+  wemoManager.addDevice(*MedHighLightingEffect);
+  wemoManager.addDevice(*MedLightingEffect);
+  wemoManager.addDevice(*MedLowLightingEffect);
 
-  ArduinoOTA.setHostname(host);
-  ArduinoOTA.onStart([]() { // switch off all the PWMs during upgrade
-    digitalWrite(ledPin, HIGH);
-  });
-
-  ArduinoOTA.onEnd([]() { // do a fancy thing with our board led at end
-
-    for(int i = 0; i < 6; i++) {
-      delay(500);
-      digitalWrite(ledPin, HIGH);
-      delay(500);
-      digitalWrite(ledPin, LOW);
-    }
-
-     for(int i = 0; i < 15; i++) {
-      delay(100);
-      digitalWrite(ledPin, HIGH);
-      delay(100);
-      digitalWrite(ledPin, LOW);
-    }
-    
-    
-  });
-
-  ArduinoOTA.onError([](ota_error_t error) {
-    (void)error;
-    ESP.restart();
-  });
-
-  /* setup the OTA server */
-  ArduinoOTA.begin();
-  Serial.println("Ready");
 }
 
 
@@ -179,101 +147,126 @@ void setupLights() {
 //1, 2, 3, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25
 void loop()
 {
+  //setAll(255, 250, 205);
+  //return;
+  if (true) {
+    
+    handleCase(8);
+    //      handleCase(8);
+    //    handleCase(8);
+
+    handleCase(9);
+    //      handleCase(9);
+    //    handleCase(9);
+
+    handleCase(10);
+    //      handleCase(10);
+    //    handleCase(10);
+
+    handleCase(11);
+    //      handleCase(11);
+    //    handleCase(11);
+
+    handleCase(12);
+    //      handleCase(12);
+    //    handleCase(12);
+
+    handleCase(13);
+    //      handleCase(13);
+    //    handleCase(13);
+  }
+  //  wemoManager.serverLoop();
+  //  Serial.println("loop");
+  //Serial.println("Looping");
   oldCase = currentCase;
 
   handleCase(currentCase);
 }
 
 
-void sendBodyResponse(bool success) {
 
-  String message = "Body received:\n";
-  message += server.arg("plain");
-  message += "\n";
-
-  server.send(200, "text/plain", message);
-  Serial.println(message);
-
+bool lightsOff() {
+  currentCase = 25;
+  return currentCase == 25;
 }
 
-void jsonCase() {
 
-  String json = server.arg(0);
-//  DynamicJsonDocument doc(1024);
-//  deserializeJson(doc, json);
-//  Serial.println(json);
-//  String intString = json.substring(5);
-  int doCase = json.toInt();
-  Serial.print("Case: ");
-  Serial.println(doCase);
-
-  turnOnCase(doCase);
-}
-
-void baseCase() {
-  String response = "<html>";
-
-  response += "<head>"
-"<link rel='apple-touch-icon' sizes='128x128' href='https://cdn4.iconfinder.com/data/icons/design-26/24/rgb_red_green_blue_color_monitoe_light_optical-512.png'>"
-"<style>"
-".button {"
-"  background-color: #4CAF50;"
-"  border: none;"
-"  color: white;"
-"  padding: 15px 32px;"
-"  text-align: center;"
-"  text-decoration: none;"
-"  display: inline-block;"
-"  font-size: 350%;"
-"  margin: 4px 2px;"
-"  cursor: pointer;"
-"}"
-"</style>"
-"<script>"
-"function sendEffect(link, elem) {"
-" elem.style.background = 'blue';"
-" const Http = new XMLHttpRequest();"
-" const url=link;"
-" Http.open('GET', url);"
-" window.setTimeout('greenColor()',2000);"
-" Http.send();"
-"}"
-"function greenColor() {"
-"  var elements = document.getElementsByClassName('button');"
-"  for(var i = 0; i < elements.length; i++){"
-"    elements[i].style.backgroundColor = '#4CAF50';"
-"  }"
-"}"
-"</script>"
-
-
-"</head><body>";
-
-
-  for (int i = 0; i < effectDataLength - 1; i++) {
-    response += "<button class='button' onclick='sendEffect(\"http://";
-    response += host;
-    response += ".local";
-    response += "/case?case=";
-    response += effectData[0][i];
-    response += "\", this)'>";
-    response += effectData[1][i];
-    response += "</button>";
-  }
-
-  response += "</body></html>";
-  
-
-  server.send(200, "text/html", response);
-  Serial.println(response);
-}
-void turnOnCase(int case1) {
-
-  currentCase = case1;
-  Serial.print("Turning on Case: ");
-  Serial.println(case1);
-
+bool rainbowLightsOn() {
+  currentCase = 8;
+  Serial.print("Rainbow cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
   neverChanged = false;
-  sendBodyResponse(true);
+  return currentCase == 8;
+}
 
+bool coolLightsOn() {
+  currentCase = 9;
+  Serial.print("Cool cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 9;
+}
+
+bool warmLightsOn() {
+  currentCase = 10;
+  Serial.print("Warm cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 10;
+}
+
+bool natureLightsOn() {
+  currentCase = 11;
+  Serial.print("nature cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 11;
+}
+
+bool candyLightsOn() {
+  currentCase = 12;
+  Serial.print("candy cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 12;
+}
+
+bool christmasLightsOn() {
+  currentCase = 13;
+  Serial.print("christmas cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 13;
+}
+
+bool lightsOn() {
+  currentCase = 24;
+  Serial.print("Full White cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 24;
+}
+
+bool mediumHighLightsOn() {
+  currentCase = 26;
+  Serial.print("Medium High cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 26;
+}
+
+bool mediumLightsOn() {
+  currentCase = 27;
+  Serial.print("Medium cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 27;
+}
+
+bool mediumLowLightsOn() {
+  currentCase = 28;
+  Serial.print("Medium Low cycle turn on ...");
+  Serial.println("Setting current case to: " + String(currentCase));
+  neverChanged = false;
+  return currentCase == 28;
 }

@@ -1,7 +1,7 @@
 void handleCase(int type) {
   //  setAll(0,0,0);
-//  Serial.print("Handling Case: ");
-//  Serial.println(type);
+  Serial.print("Handling Case: ");
+  Serial.println(type);
   
   //    Serial.println("Default Effects");
   switch (type) {
@@ -107,7 +107,6 @@ void handleCase(int type) {
       break;
 
     case 20:
-      setAll(0, 0, 0);
       Sparkle(30, 0xff, 0xff, 0xff);
       //      Sparkle(inputs[0], inputs[1], inputs[2], inputs[3]);
 

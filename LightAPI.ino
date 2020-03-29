@@ -801,10 +801,24 @@ bool showStrip() {
 
 
 
-  if (wifiConnected) {    
-    server.handleClient(); //Handling of incoming requests
-    MDNS.update();
-    ArduinoOTA.handle();
+  if (wifiConnected) {
+    // return checkWifi();
+    //Serial.println("Server Loop");
+    //Serial.println("Before loop received" + String(wemoManager.receivedNetworkRequest));
+    wemoManager.serverLoop();
+  
+    rainbowEffect->serverLoop();
+    coolEffect->serverLoop();
+    warmEffect->serverLoop();
+    natureEffect->serverLoop();
+    candyEffect->serverLoop();
+    christmasEffect->serverLoop();
+    
+    lightingEffect->serverLoop();
+    MedHighLightingEffect->serverLoop();
+    MedLightingEffect->serverLoop();
+    MedLowLightingEffect->serverLoop();
+    // Serial.println("After loop received Returning" + String(wemoManager.receivedNetworkRequest));
   }
 
   return oldCase != currentCase;
