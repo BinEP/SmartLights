@@ -801,12 +801,15 @@ bool showStrip() {
 
 
 
-  if (wifiConnected) {    
-    server.handleClient(); //Handling of incoming requests
-    MDNS.update();
-    ArduinoOTA.handle();
-  }
 
+  // return checkWifi();
+  //Serial.println("Server Loop");
+  //Serial.println("Before loop received" + String(wemoManager.receivedNetworkRequest));
+  // Serial.println("After loop received Returning" + String(wemoManager.receivedNetworkRequest));
+
+  if (oldCase != currentCase) {
+    clearStripBeforehand = true;
+  }
   return oldCase != currentCase;
   // return false;
 
