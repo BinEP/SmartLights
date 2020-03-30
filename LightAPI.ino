@@ -806,6 +806,9 @@ bool showStrip() {
    // fauxmoESP uses an async TCP server but a sync UDP server
     // Therefore, we have to manually poll for UDP packets
     fauxmo.handle();
+    server.handleClient(); //Handling of incoming requests
+    MDNS.update();
+    ArduinoOTA.handle();
 
     // This is a sample code to output free heap every 5 seconds
     // This is a cheap way to detect memory leaks
