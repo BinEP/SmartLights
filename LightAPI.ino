@@ -802,25 +802,29 @@ bool showStrip() {
 
 
   if (wifiConnected) {
-    // return checkWifi();
-    //Serial.println("Server Loop");
-    //Serial.println("Before loop received" + String(wemoManager.receivedNetworkRequest));
-    wemoManager.serverLoop();
-  
-    rainbowEffect->serverLoop();
-    coolEffect->serverLoop();
-    warmEffect->serverLoop();
-    natureEffect->serverLoop();
-    candyEffect->serverLoop();
-    christmasEffect->serverLoop();
+
+   // fauxmoESP uses an async TCP server but a sync UDP server
+    // Therefore, we have to manually poll for UDP packets
+    fauxmo.handle();
+
+    // This is a sample code to output free heap every 5 seconds
+    // This is a cheap way to detect memory leaks
+    static unsigned long last = millis();
+    if (millis() - last > 5000) {
+        last = millis();
+        Serial.printf("[MAIN] Free heap: %d bytes\n", ESP.getFreeHeap());
+    }
+
+    // If your device state is changed by any other means (MQTT, physical button,...)
+    // you can instruct the library to report the new state to Alexa on next request:
+    // fauxmo.setState(ID_YELLOW, true, 255);
     
-    lightingEffect->serverLoop();
-    MedHighLightingEffect->serverLoop();
-    MedLightingEffect->serverLoop();
-    MedLowLightingEffect->serverLoop();
-    // Serial.println("After loop received Returning" + String(wemoManager.receivedNetworkRequest));
+  
   }
 
+  if (oldCase != currentCase) {
+    strip.setBrightness(brightness);
+  }
   return oldCase != currentCase;
   // return false;
 
