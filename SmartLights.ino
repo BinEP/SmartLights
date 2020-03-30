@@ -332,7 +332,7 @@ void baseCase() {
   for (int i = 0; i < effectDataLength - 1; i++) {
     response += "<button class='button' onclick='sendEffect(\"http://";
     response += host;
-    response += ".local";
+    response += ".local:81";
     response += "/case?case=";
     response += effectData[0][i];
     response += "\", this)'>";
