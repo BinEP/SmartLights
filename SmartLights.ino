@@ -4,6 +4,8 @@
 #include <ESP8266WebServer.h>
 #include <fauxmoESP.h>
 #include <Adafruit_NeoPixel.h>
+#include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
 
 
 //LED Stuff
@@ -65,8 +67,13 @@ void secondOff();
 //const char* password = "brady151";
 const String ssid = "StoffelNetwork-5";
 const String password = "9529471171";
+const char* host = "connorlights";
+String ipAddr = "";
+
 
 fauxmoESP fauxmo;
+ESP8266WebServer server(81);
+
 
 const int ledPin = LED_BUILTIN;
 
@@ -90,6 +97,8 @@ void setup()
 
 
   setupLights();
+  ipAddr = WiFi.localIP().toString();
+
 
   //  pinMode(ledPin, OUTPUT); // initialize digital ledPin as an output.
   //  delay(10);
@@ -119,7 +128,66 @@ void setupWemoStuff() {
   Serial.println(ip);
   wifiConnected = true;
 
+  server.on("/case", jsonCase); //Associate the handler function to the path
+  server.on("/base", baseCase); //Associate the handler function to the path
 
+
+   // Set up mDNS responder:
+  // - first argument is the domain name, in this example
+  //   the fully-qualified domain name is "esp8266.local"
+  // - second argument is the IP address to advertise
+  //   we send our IP address on the WiFi network
+  if (!MDNS.begin(host)) {
+    Serial.println("Error setting up MDNS responder!");
+    while (1) {
+      delay(1000);
+    }
+  }
+  Serial.println("mDNS responder started");
+
+  server.begin(); //Start the server
+  Serial.println("Server listening");
+  MDNS.addService("http", "tcp", 81);
+
+
+
+  ArduinoOTA.setHostname(host);
+  ArduinoOTA.onStart([]() { // switch off all the PWMs during upgrade
+    digitalWrite(ledPin, HIGH);
+  });
+
+  ArduinoOTA.onEnd([]() { // do a fancy thing with our board led at end
+
+    for(int i = 0; i < 6; i++) {
+      delay(500);
+      digitalWrite(ledPin, HIGH);
+      delay(500);
+      digitalWrite(ledPin, LOW);
+    }
+
+     for(int i = 0; i < 15; i++) {
+      delay(100);
+      digitalWrite(ledPin, HIGH);
+      delay(100);
+      digitalWrite(ledPin, LOW);
+    }
+    
+    
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    (void)error;
+    ESP.restart();
+  });
+
+  /* setup the OTA server */
+  ArduinoOTA.begin();
+  Serial.println("Ready");
+
+
+
+
+  
 
  // By default, fauxmoESP creates it's own webserver on the defined port
     // The TCP port must be 80 for gen3 devices (default is 1901)
@@ -290,4 +358,98 @@ void loop()
   oldCase = currentCase;
 
   handleCase(currentCase);
+}
+
+
+void sendBodyResponse(bool success) {
+
+  String message = "Body received:\n";
+  message += server.arg("plain");
+  message += "\n";
+
+  server.send(200, "text/plain", message);
+  Serial.println(message);
+
+}
+
+void jsonCase() {
+
+  String json = server.arg(0);
+//  DynamicJsonDocument doc(1024);
+//  deserializeJson(doc, json);
+//  Serial.println(json);
+//  String intString = json.substring(5);
+  int doCase = json.toInt();
+  Serial.print("Case: ");
+  Serial.println(doCase);
+
+  turnOnCase(doCase);
+}
+
+void baseCase() {
+  String response = "<html>";
+
+  response += "<head>"
+"<link rel='apple-touch-icon' sizes='128x128' href='https://cdn4.iconfinder.com/data/icons/design-26/24/rgb_red_green_blue_color_monitoe_light_optical-512.png'>"
+"<style>"
+".button {"
+"  background-color: #4CAF50;"
+"  border: none;"
+"  color: white;"
+"  padding: 15px 32px;"
+"  text-align: center;"
+"  text-decoration: none;"
+"  display: inline-block;"
+"  font-size: 350%;"
+"  margin: 4px 2px;"
+"  cursor: pointer;"
+"}"
+"</style>"
+"<script>"
+"function sendEffect(link, elem) {"
+" elem.style.background = 'blue';"
+" const Http = new XMLHttpRequest();"
+" const url=link;"
+" Http.open('GET', url);"
+" window.setTimeout('greenColor()',2000);"
+" Http.send();"
+"}"
+"function greenColor() {"
+"  var elements = document.getElementsByClassName('button');"
+"  for(var i = 0; i < elements.length; i++){"
+"    elements[i].style.backgroundColor = '#4CAF50';"
+"  }"
+"}"
+"</script>"
+
+
+"</head><body>";
+
+
+  for (int i = 0; i < effectDataLength - 1; i++) {
+    response += "<button class='button' onclick='sendEffect(\"http://";
+    response += host;
+    response += ".local";
+    response += "/case?case=";
+    response += effectData[0][i];
+    response += "\", this)'>";
+    response += effectData[1][i];
+    response += "</button>";
+  }
+
+  response += "</body></html>";
+  
+
+  server.send(200, "text/html", response);
+  Serial.println(response);
+}
+void turnOnCase(int case1) {
+
+  currentCase = case1;
+  Serial.print("Turning on Case: ");
+  Serial.println(case1);
+
+  neverChanged = false;
+  sendBodyResponse(true);
+
 }
