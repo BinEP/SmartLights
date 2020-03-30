@@ -454,6 +454,9 @@ void baseCase() {
 void turnOnCase(int case1) {
 
   currentCase = case1;
+  
+//  fauxmo.setState(case1, true, 255);
+  
   Serial.print("Turning on Case: ");
   Serial.println(case1);
 
