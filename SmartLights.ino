@@ -54,7 +54,7 @@ String effectData[][28] = {{"25", "1","2","3","4","5","6","7","8","9","10","11",
                     "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim", "Timed 15 minutes" }};
 
 
-int effectDataLength = 29;
+int effectDataLength = 30;
 ESP8266WebServer server(80);
 
 
