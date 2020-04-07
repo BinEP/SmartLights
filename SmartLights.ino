@@ -7,6 +7,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266mDNS.h>
 
+#define TURN_OFF_MILLIS 30*1000
 
 //LED Stuff
 
@@ -17,6 +18,9 @@ bool newEffect = false;
 int currentCase = 25;
 int oldCase = 25;
 bool neverChanged = true;
+
+long turnOffReference = 0;
+bool turnOff = false;
 
 
 // prototypes
@@ -43,14 +47,14 @@ String ipAddr = "";
 
 
 
-String effectData[][28] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28"},
+String effectData[][28] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28", "29"},
                     {"Off", "Strobe", "Cylon Bounce", "Fire", "Color Wipe", "Fade in and Out", "Halloween Eyes", "KITT", "Rainbow Cylce", 
                     "Cool Cycle", "Warm Cycle", "Nature Cycle", "Candy Cycle", "Christmas Cycle", "Twinkle", "Random Twinkle", 
                     "Running Lights", "Snow Sparkle", "Bouncing Balls", "Bouncing Colored Balls", "Sparkle", "Theater Chase", 
-                    "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim" }};
+                    "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim", "Timed 15 minutes" }};
 
 
-int effectDataLength = 28;
+int effectDataLength = 29;
 ESP8266WebServer server(80);
 
 
@@ -207,7 +211,12 @@ void jsonCase() {
   Serial.print("Case: ");
   Serial.println(doCase);
 
-  turnOnCase(doCase);
+  if (doCase == 29) {
+    turnOff = true;
+    turnOffReference = millis();
+  } else {
+    turnOnCase(doCase);
+  }
 }
 
 void baseCase() {
@@ -274,6 +283,7 @@ void turnOnCase(int case1) {
   Serial.println(case1);
 
   neverChanged = false;
+  turnOff = false;
   sendBodyResponse(true);
 
 }
