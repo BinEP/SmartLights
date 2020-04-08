@@ -7,7 +7,7 @@
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266mDNS.h>
 
-#define TURN_OFF_MILLIS 30*1000
+#define TURN_OFF_MILLIS 3*1000
 
 //LED Stuff
 
@@ -47,14 +47,14 @@ String ipAddr = "";
 
 
 
-String effectData[][28] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28", "29"},
+String effectData[][29] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28", "29"},
                     {"Off", "Strobe", "Cylon Bounce", "Fire", "Color Wipe", "Fade in and Out", "Halloween Eyes", "KITT", "Rainbow Cylce", 
                     "Cool Cycle", "Warm Cycle", "Nature Cycle", "Candy Cycle", "Christmas Cycle", "Twinkle", "Random Twinkle", 
                     "Running Lights", "Snow Sparkle", "Bouncing Balls", "Bouncing Colored Balls", "Sparkle", "Theater Chase", 
                     "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim", "Timed 15 minutes" }};
 
 
-int effectDataLength = 30;
+int effectDataLength = 29;
 ESP8266WebServer server(80);
 
 
@@ -212,8 +212,7 @@ void jsonCase() {
   Serial.println(doCase);
 
   if (doCase == 29) {
-    turnOff = true;
-    turnOffReference = millis();
+    turnOffTimed();
   } else {
     turnOnCase(doCase);
   }
@@ -259,7 +258,7 @@ void baseCase() {
 "</head><body>";
 
 
-  for (int i = 0; i < effectDataLength - 1; i++) {
+  for (int i = 0; i < effectDataLength; i++) {
     response += "<button class='button' onclick='sendEffect(\"http://";
     response += host;
     response += ".local";
@@ -276,6 +275,20 @@ void baseCase() {
   server.send(200, "text/html", response);
   Serial.println(response);
 }
+
+void turnOffTimed() {
+  
+  Serial.print("Turning on Case: ");
+  Serial.println(case1);
+  turnOff = true;
+  turnOffReference = millis();
+  neverChanged = false;
+  sendBodyResponse(true);
+
+  
+}
+
+
 void turnOnCase(int case1) {
 
   currentCase = case1;

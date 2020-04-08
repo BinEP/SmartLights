@@ -807,7 +807,7 @@ bool showStrip() {
     ArduinoOTA.handle();
   }
 
-  if (millis() - turnOffReference > TURN_OFF_MILLIS) {
+  if ((millis() - turnOffReference > TURN_OFF_MILLIS) && turnOff) {
     currentCase = 25;
   }
 
