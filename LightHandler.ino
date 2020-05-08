@@ -138,7 +138,7 @@ void handleCase(int type) {
       setAll(200, 200, 200);
       break;
     case 28:
-      setAll(70, 70, 70);
+      setAll(13, 15, 17);
       break;
   }
 //  Serial.println("Exiting handle case");

@@ -7,12 +7,12 @@
 #include <Adafruit_NeoPixel.h>
 #include <ESP8266mDNS.h>
 
-#define TURN_OFF_MILLIS 3*1000
+#define TURN_OFF_MILLIS 15*1000
 
 //LED Stuff
 
 #define PIN 14
-int NUM_LEDS = 200;
+int NUM_LEDS = 250;
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, PIN, NEO_RGB + NEO_KHZ800);
 bool newEffect = false;
 int currentCase = 25;
@@ -48,10 +48,10 @@ String ipAddr = "";
 
 
 String effectData[][29] = {{"25", "1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24","26", "27", "28", "29"},
-                    {"Off", "Strobe", "Cylon Bounce", "Fire", "Color Wipe", "Fade in and Out", "Halloween Eyes", "KITT", "Rainbow Cylce", 
+                    {"Off", "Strobe", "Cylon Bounce", "Fire", "Color Wipe", "Fade in and Out", "Halloween Eyes", "KITT", "Rainbow Cycle", 
                     "Cool Cycle", "Warm Cycle", "Nature Cycle", "Candy Cycle", "Christmas Cycle", "Twinkle", "Random Twinkle", 
                     "Running Lights", "Snow Sparkle", "Bouncing Balls", "Bouncing Colored Balls", "Sparkle", "Theater Chase", 
-                    "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim", "Timed 15 minutes" }};
+                    "Theater Chase Rainbow", "Candy Cane", "White", "Mid", "Higher", "Dim", "Turn Off 15 Seconds" }};
 
 
 int effectDataLength = 29;
@@ -225,7 +225,7 @@ void baseCase() {
 "<link rel='apple-touch-icon' sizes='128x128' href='https://cdn4.iconfinder.com/data/icons/design-26/24/rgb_red_green_blue_color_monitoe_light_optical-512.png'>"
 "<style>"
 ".button {"
-"  background-color: #4CAF50;"
+"  background-color: #62B3FF;"
 "  border: none;"
 "  color: white;"
 "  padding: 15px 32px;"
@@ -236,20 +236,32 @@ void baseCase() {
 "  margin: 4px 2px;"
 "  cursor: pointer;"
 "}"
+
+".buttonRainbow {"
+"  background-color: #004383;"
+"}"
+
+".buttonSelected {"
+"  background-color: #a530e8;"
+"}"
+
+"body {"
+"  background-color: #FF33E3;"
+"}"
 "</style>"
 "<script>"
 "function sendEffect(link, elem) {"
-" elem.style.background = 'blue';"
+" elem.classList.add('buttonSelected');"
 " const Http = new XMLHttpRequest();"
 " const url=link;"
 " Http.open('GET', url);"
-" window.setTimeout('greenColor()',2000);"
+" window.setTimeout('originalCols()',2000);"
 " Http.send();"
 "}"
-"function greenColor() {"
+"function originalCols() {"
 "  var elements = document.getElementsByClassName('button');"
 "  for(var i = 0; i < elements.length; i++){"
-"    elements[i].style.backgroundColor = '#4CAF50';"
+"    elements[i].classList.remove('buttonSelected');"
 "  }"
 "}"
 "</script>"
@@ -259,7 +271,12 @@ void baseCase() {
 
 
   for (int i = 0; i < effectDataLength; i++) {
-    response += "<button class='button' onclick='sendEffect(\"http://";
+    if (effectData[0][i].equals("8")) {
+      response += "<button class='button buttonRainbow' onclick='sendEffect(\"http://";
+    } else {
+      response += "<button class='button' onclick='sendEffect(\"http://";
+    }
+    
     response += host;
     response += ".local";
     response += "/case?case=";
@@ -279,7 +296,7 @@ void baseCase() {
 void turnOffTimed() {
   
   Serial.print("Turning on Case: ");
-  Serial.println(case1);
+  Serial.println(29);
   turnOff = true;
   turnOffReference = millis();
   neverChanged = false;
